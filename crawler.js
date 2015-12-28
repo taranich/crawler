@@ -1,5 +1,3 @@
-//var request = "https://api.vk.com/method/photos.get?owner_id=943636&album_id=saved&v=5.40"
-
 var fs = require("fs");
 var https = require("https");
 var http = require("http");
@@ -15,7 +13,6 @@ var reqOptions = null;
 var albums = null;
 var processedImages;
 var loadedImages = new Array();
-//var loadedData = new Array();
 var bar = null;
 
 commander
@@ -186,9 +183,7 @@ function collectPhotos(options, callback){
         console.log("# "+err);
         callback(err);
       }
-//      console.log("Length before: "+loadedImages.length+" adding "+loadedData.response.items.length);
       loadedImages = loadedImages.concat(loadedData.response.items);
-//      console.log("Length after: "+loadedImages.length);
       callback(null);
     });
     res.on("error", function(err){
@@ -202,13 +197,6 @@ function collectPhotos(options, callback){
       callback(err);
   }).end();
 };
-
-// // Load list of images from vk
-// reqOptions = {
-//   hostname: "api.vk.com",
-//   path: "/method/photos.get?owner_id="+commander.id+"&album_id="+commander.album+"&v=5.40",
-//   method: "GET"
-// };
 
 function checkUpdates(){
   var toBeProcessed = new Array();
@@ -234,7 +222,6 @@ function checkUpdates(){
   }
   if (toBeProcessed.length > 0){
     bar = new ProgressBar("Downloading: [:bar] :percent", {width: 50, total: toBeProcessed.length});
-//    console.log("Tasks: "+toBeProcessed.length)
     q.push(toBeProcessed);
   }
   else {
@@ -295,48 +282,6 @@ function downloadImage (workingObject, callback){
           });
         }
       });
-// // // //      console.log("> "+workingObject.id);
-// // //       
-// // //       https.get(url, function(res) {
-// // //         res.setEncoding("binary");
-// // //         var data = "";
-// // //         res.on("data", function(chunk){
-// // //           data += chunk;
-// // //         });
-// // //         
-// // //         res.on("error", function(err){
-// // //           bar.tick();
-// // //           iErr += 1;
-// // //           callback(err);
-// // //         });
-// // //   
-// // //         res.on("end", function(){
-// // //           console.log("< "+workingObject.id);
-// // //           fs.mkdir(workingObject.workingDirectory, function(err){
-// // //             bar.tick();
-// // //             if (err){
-// // //               iErr += 1;
-// // //               callback(err);
-// // //             }
-// // //             else{
-// // //               fs.writeFile(fileName, data, "binary", function(err){
-// // //                 if (err){
-// // //                   iErr+=1;
-// // //                   callback(err);
-// // //                 }
-// // //                 else{
-// // //                   iDone += 1;
-// // //                   processedImages.push({id: workingObject.id, owner_id: workingObject.owner_id});
-// // //                 }
-// // //               });
-// // //             }
-// // //           });
-// // //         });
-// // //       }).on("error", function(err){
-// // //           bar.tick();
-// // //           iErr += 1;
-// // //           callback(err);
-// // //       }).end();
     }
     else if (url.substr(0,5) === "http:"){
       fs.mkdir(workingObject.workingDirectory, function(err){
@@ -371,49 +316,6 @@ function downloadImage (workingObject, callback){
           });
         }
       });
-
-// // //       console.log("> "+workingObject.id);
-// // //       http.get(url, function(res) {
-// // //         res.setEncoding("binary");
-// // //         var data = "";
-// // //         res.on("data", function(chunk){
-// // //           data += chunk;
-// // //         });
-// // //   
-// // //         res.on("error", function(err){
-// // //           bar.tick();
-// // //           iErr += 1;
-// // //           console.log(err);
-// // //           callback();
-// // //         });
-// // // 
-// // //         res.on("end", function(){
-// // //           console.log("< "+workingObject.id);
-// // //           fs.mkdir(workingObject.workingDirectory, function(err){
-// // //             bar.tick();
-// // //             if (err){
-// // //               iErr += 1;
-// // //               callback(err);
-// // //             }
-// // //             else{
-// // //               fs.writeFile(fileName, data, "binary", function(err){
-// // //                 if (err){
-// // //                   iErr+=1;
-// // //                   callback(err);
-// // //                 }
-// // //                 else{
-// // //                   iDone += 1;
-// // //                   processedImages.push({id: workingObject.id, owner_id: workingObject.owner_id});
-// // //                 }
-// // //               });
-// // //             }
-// // //           });
-// // //         });
-// // //       }).on("error", function(err){
-// // //           bar.tick();
-// // //           iErr += 1;
-// // //           callback(err);
-// // //       }).end();
     }
     else {
       callback();
@@ -423,12 +325,7 @@ function downloadImage (workingObject, callback){
 
 var q = async.queue(downloadImage, 1);
 
-// q.empty = function(){
-//   console.log("Queue is empty");
-// }
-
 q.drain = function(){
-  // console.log("Drain."+q.length());
   fs.writeFile(commander.id+"/processed.json", JSON.stringify(processedImages), completeProcess);
 };
 
@@ -438,21 +335,3 @@ function completeProcess(err){
   console.log("Bye.");
   process.exit(0);
 }
-
-// process.on("exit", function(code){
-//   console.log("Surprise!"+code);
-//   console.log(q.length());
-// });
-
-// process.on("beforeExit", function(){
-//   if (q.length() > 0){
-//     console.log("Trying to exit, but queue is not empty: "+q.length());
-// //    setTimeout(q.resume(), 30000);
-//     console.log(process._getActiveHandles());
-//     console.log(process._getActiveRequests());
-//   }
-//   // console.log("Started: "+q.started);
-//   // console.log("Running: "+q.running());
-//   // console.log("Idle: "+q.idle());
-//   // console.log("Paused: "+ q.paused);
-// });
