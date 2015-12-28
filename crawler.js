@@ -14,25 +14,37 @@ var albums = null;
 var processedImages;
 var loadedImages = new Array();
 var bar = null;
+var updateMode = false;
 
-commander
+var q = async.queue(downloadImage, 1);
+q.drain = function(){
+  fs.writeFile(commander.id+"/processed.json", JSON.stringify(processedImages), completeProcess);
+};
+
+
+startProcessing();
+
+function startProcessing(err){
+  commander
   .usage("options")
   .option("-i, --id [value]", "User ID")
   .option("-a, --album <n>", "Album ID")
+  .option("-u, --update", "Update mode")
   .parse(process.argv);
   
-if (!commander.id) {
-  console.log("Use --help to see available options.");
-  process.exit(0);
-}
-
-https.request({
-  hostname: "api.vk.com",
-  path: "/method/photos.getAlbums?owner_id="+commander.id+"&need_system=1&v=5.40",
-  method: "GET",
-  headers: {
-    'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.13) Gecko/20080311 Firefox/2.0.0.13'
+  if (!commander.id) {
+    console.log("Use --help to see available options.");
+    process.exit(0);
   }
+  if (commander.update) updateMode = true;
+  
+  https.request({
+    hostname: "api.vk.com",
+    path: "/method/photos.getAlbums?owner_id="+commander.id+"&need_system=1&v=5.40",
+    method: "GET",
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.13) Gecko/20080311 Firefox/2.0.0.13'
+    }
   }, function(res){
     var data="";
     res.on("data", function(chunk){
@@ -48,10 +60,11 @@ https.request({
       }
       getAlbums();
     });
-}).on("error", function(err){
-  console.log("# Cannot get list of albums for user "+commander.id+".");
-  throw new Error(err);
-}).end();
+  }).on("error", function(err){
+    console.log("# Cannot get list of albums for user "+commander.id+".");
+    throw new Error(err);
+  }).end();
+}
 
 function getAlbums(){
   if (commander.id && !commander.album){
@@ -200,6 +213,11 @@ function collectPhotos(options, callback){
 
 function checkUpdates(){
   var toBeProcessed = new Array();
+  var fileUpdateMode = "";
+  if (updateMode){
+      var currentDate = new Date();
+      fileUpdateMode = "/update_"+currentDate.getUTCFullYear()+("0"+(currentDate.getMonth()+1)).slice(-2)+("0"+currentDate.getDate()).slice(-2);
+  }
   bar = new ProgressBar("Checking updates: [:bar] :percent", {width: 50, total: loadedImages.length});
   for (var i=0; i<loadedImages.length; i++){
     var date=new Date(loadedImages[i].date*1000);
@@ -215,13 +233,18 @@ function checkUpdates(){
     if (!wasProcessed){
       var workingObject = loadedImages[i];
       iNew+=1;
-      workingObject.workingDirectory = commander.id+"/"+targetDirectory;
+      workingObject.workingDirectory = commander.id+fileUpdateMode+"/"+targetDirectory;
       toBeProcessed.push(workingObject);
     }
     bar.tick();
   }
   if (toBeProcessed.length > 0){
     bar = new ProgressBar("Downloading: [:bar] :percent", {width: 50, total: toBeProcessed.length});
+    if (updateMode){
+      fs.mkdir(commander.id+fileUpdateMode, function(err){
+        if (err) throw new Error(err);
+      });
+    }
     q.push(toBeProcessed);
   }
   else {
@@ -322,12 +345,6 @@ function downloadImage (workingObject, callback){
     };
   };
 }
-
-var q = async.queue(downloadImage, 1);
-
-q.drain = function(){
-  fs.writeFile(commander.id+"/processed.json", JSON.stringify(processedImages), completeProcess);
-};
 
 function completeProcess(err){
   if (err) console.log("# Error writing session file.\n"+err);
